@@ -8,9 +8,9 @@ CPPFLAGS= -std=gnu90 -Wall -pedantic
 
 build: node 
 node: node.o
-	$(CC) -o node node.o
+	$(CC) -o node node.o -lpthread
 node.o: node.c
-	$(CC) -o node.o -c $(CFLAGS) $(CPPFLAGS) node.c -lpthread
+	$(CC) -o node.o -c $(CFLAGS) $(CPPFLAGS) node.c
 .PHONY: clean
 clean: 
 	rm -f node node.o

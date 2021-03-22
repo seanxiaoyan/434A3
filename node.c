@@ -21,7 +21,7 @@ NSID: xix799
 #define  BACKLOG 10
 #define  MAXDATASIZE 100
 #define  HOSTNAME "127.0.0.1"
-
+int flag = -1;
 void getInput(char *buffer){
     char input[INPUTSIZE];
     printf("Enter the day: ");
@@ -39,14 +39,15 @@ int validateInput(char *buffer){
     (strcmp(buffer,"Friday") == 0)||
     (strcmp(buffer,"Tuesday") == 0)||
     (strcmp(buffer,"Saturday") == 0)||
-    (strcmp(buffer,"Sunday") == 0)||
-    (strcmp(buffer,"all") == 0))
+    (strcmp(buffer,"Sunday") == 0))
     {
         val = 1;
     }
     else if (strcmp(buffer,"quit") == 0){
-        val = 0;
+        flag = 1;
+        val = 1;
     }
+
     return val;
 }
 
@@ -59,53 +60,54 @@ void *nodeSend(void* port_des){
     char msg[INPUTSIZE];
 
     while(1){
+
         memset(buffer,0,INPUTSIZE);
         memset(buf,0,MAXDATASIZE);
         getInput(buffer);
-        switch (validateInput(buffer)){
-            case -1:
+        if(validateInput(buffer)==-1)
+        {
             printf("invalid day\n");
             break;
-            case 0:
-            break;
-            break;
-            default:
-            strcpy(msg,buffer);
+        }
 
-            host=gethostbyname(HOSTNAME);
-                
+        else{    
+        strcpy(msg,buffer);
 
-            port_=*(int*)port_des;
+        host=gethostbyname(HOSTNAME);
 
+        port_=*(int*)port_des;
 
-
-            memset(&server, 0, sizeof(server));
-            server.sin_family= AF_INET;
-            server.sin_port = htons(port_);
-            server.sin_addr =*((struct in_addr *)host->h_addr);
-            if((socketfd=socket(AF_INET, SOCK_STREAM, 0))==-1){
-                printf("socket()error\n");
-                exit(1);
-            }
-            if(connect(socketfd,(struct sockaddr *)&server,sizeof(server))==-1){
-            printf("connect()error\n");
+        memset(&server, 0, sizeof(server));
+        server.sin_family= AF_INET;
+        server.sin_port = htons(port_);
+        server.sin_addr =*((struct in_addr *)host->h_addr);
+        if((socketfd=socket(AF_INET, SOCK_STREAM, 0))==-1){
+            printf("socket()error\n");
             exit(1);
-            }
-            
-            len = strlen(msg);
-            
-            send(socketfd, msg, len, 0);
-            printf("here1\n");
-            if((num=recv(socketfd,buf,MAXDATASIZE,0)) == -1){
-                printf("recv() error\n");
-                exit(1);
-            }
-            buf[num]='\0';
-            printf("%s",buf);
-            close(socketfd);                  
+        }
+        if(connect(socketfd,(struct sockaddr *)&server,sizeof(server))==-1){
+        printf("connect()error\n");
+        exit(1);
         }
         
+        len = strlen(msg);
+        
+        send(socketfd, msg, len, 0);
+        
+        if(flag==1){        
+            break;
+        }
+        if((num=recv(socketfd,buf,MAXDATASIZE,0)) == -1){
+            printf("recv() error\n");
+            exit(1);
+        }
+        buf[num]='\0';
+        printf("%s",buf);
+        close(socketfd);                  
+        }
+    
     }
+    return 0; 
 }
 
 void *nodeRecive(void* arg){
@@ -143,23 +145,24 @@ void *nodeRecive(void* arg){
     }
 
     while(1){
-        
+
         if((connectfd = accept(socketfd,(struct sockaddr*)&client,&addrlen))==-1) {
             perror("accept()error\n");
             exit(1);
         }
-        printf("here\n");
-        printf("Got a connection from client ip %s, prot %d\n",inet_ntoa(client.sin_addr),htons(client.sin_port));
+        
+       
 
         if((buf_len = recv(connectfd,buf,MAXDATASIZE,0)) == -1){
         printf("recv() error\n");
         exit(1);
         }
-        buf[buf_len]='\0';
+        if(strcmp(buf,"quit")==0){break;}
         printf("buffer from proxy is: %s\n",buf);
        
         close(connectfd);
     }
+    return 0; 
 }
  
 int main(int argc, char *argv[]){
@@ -180,9 +183,6 @@ int main(int argc, char *argv[]){
     pthread_create(&tid2, NULL, nodeRecive, (void *)&p);
     pthread_join(tid1, NULL); 
     pthread_join(tid2, NULL); 
-    while(1){
-        // fore 
-    }
     return 0;
 }
 
